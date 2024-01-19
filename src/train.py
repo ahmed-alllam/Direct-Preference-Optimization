@@ -8,16 +8,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from torch.utils.data import DataLoader
+from datasets import load_dataset
+from transformers import AutoTokenizer, AutoModel
 
-def seed_everything(seed=2003):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
+from tqdm import tqdm
+import wandb
 
-def create_dataloader():
-    pass
+from utils import seed_everything, create_dataloader
 
 def calculate_DPO_loss():
     pass
