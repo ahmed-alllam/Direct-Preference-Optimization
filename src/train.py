@@ -17,8 +17,14 @@ import wandb
 
 from utils import seed_everything, create_dataloader
 
-def calculate_DPO_loss():
-    pass
+def calculate_DPO_losses(model_prefered_logits, model_disprefered_logits,
+                       ref_prefered_logits, ref_disprefered_logits,
+                       beta=0.5):
+
+    relative_prefered_logits = model_prefered_logits - ref_prefered_logits
+    relative_disprefered_logits = model_disprefered_logits - ref_disprefered_logits
+
+    return -F.logsigmoid(beta * relative_prefered_logits - beta * relative_disprefered_logits)
 
 def train():
     pass
