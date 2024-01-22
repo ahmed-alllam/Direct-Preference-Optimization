@@ -1,0 +1,7 @@
+argparse==1.4.0
+numpy==1.26.3
+torch==2.1.2
+datasets==2.16.1
+transformers==4.37.0
+wandb==0.16.2
+tqdm==4.66.1
