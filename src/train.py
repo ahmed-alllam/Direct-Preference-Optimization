@@ -1,6 +1,7 @@
 import argparse
 import random
 import numpy as np
+from functools import partial
 
 import torch
 import torch.nn as nn
@@ -9,7 +10,7 @@ from torch.optim import AdamW
 
 from torch.utils.data import DataLoader
 from datasets import load_dataset
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 import wandb
 from tqdm import tqdm
@@ -39,14 +40,14 @@ def get_log_prob(logits, labels):
     log_probs = F.log_softmax(logits, dim=-1)
     return torch.gather(log_probs, -1, labels.unsqueeze(-1)).squeeze(-1).mean(-1)
 
-def collate_fn(batch):
+def collate_fn(batch, tokenizer, max_length, device):
     prompts = ['Instruct: ' + item['prompt'] + '\n' for item in batch]
     chosen_responses = ['Output: ' + item['chosen'] for item in batch]
     rejected_responses = ['Output: ' + item['rejected'] for item in batch]
 
-    prompt_ids = tokenizer.batch_encode_plus(prompts, padding=True, return_tensors="pt", max_length=args.max_length, truncation=True)['input_ids'].to(device)
-    prefered_ids = tokenizer.batch_encode_plus(chosen_responses, padding=True, return_tensors="pt", max_length=args.max_length, truncation=True)['input_ids'].to(device)
-    disprefered_ids = tokenizer.batch_encode_plus(rejected_responses, padding=True, return_tensors="pt", max_length=args.max_length, truncation=True)['input_ids'].to(device)
+    prompt_ids = tokenizer.batch_encode_plus(prompts, padding=True, return_tensors="pt", max_length=max_length, truncation=True)['input_ids'].to(device)
+    prefered_ids = tokenizer.batch_encode_plus(chosen_responses, padding=True, return_tensors="pt", max_length=max_length, truncation=True)['input_ids'].to(device)
+    disprefered_ids = tokenizer.batch_encode_plus(rejected_responses, padding=True, return_tensors="pt", max_length=max_length, truncation=True)['input_ids'].to(device)
 
     prompt_prefered_ids = torch.cat([prompt_ids, prefered_ids], dim=-1)
     prompt_disprefered_ids = torch.cat([prompt_ids, disprefered_ids], dim=-1)
@@ -59,7 +60,7 @@ def collate_fn(batch):
             'prompt_prefered_mask': prompt_prefered_mask,
             'prompt_disprefered_mask': prompt_disprefered_mask}
 
-def train(model, ref_model, optimizer, train_dataloader, epochs=1, beta=0.1):
+def train(model, ref_model, tokenizer, optimizer, train_dataloader, epochs=1, beta=0.1):
     model.train()
     ref_model.eval()
 
@@ -121,9 +122,9 @@ def main():
     optimizer = AdamW(model.parameters(), lr=args.lr)
 
     dataset = load_dataset(args.dataset_name, split="train")
-    train_dataloader = torch.utils.data.DataLoader(dataset['train'], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+    train_dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, collate_fn=partial(collate_fn, tokenizer=tokenizer, max_length=args.max_length, device=device))
 
-    train(model, ref_model, optimizer, train_dataloader, epochs=args.epochs, beta=args.beta)
+    train(model, ref_model, tokenizer, optimizer, train_dataloader, epochs=args.epochs, beta=args.beta)
 
     model.save_pretrained("model-DPO.pt")
 
