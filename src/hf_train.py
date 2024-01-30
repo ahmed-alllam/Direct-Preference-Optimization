@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from datasets import load_dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
 
 from trl import DPOTrainer
 
