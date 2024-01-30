@@ -25,16 +25,9 @@ def preprocess_data(item):
         'rejected': 'Output: ' + item['rejected']
     }
 
-def train(model, ref_model, dataset, tokenizer, beta, lr, batch_size, epochs):
+def train(model, ref_model, dataset, tokenizer, beta, training_args):
     model.train()
     ref_model.eval()
-
-    training_args = TrainingArguments(
-        learning_rate=lr,
-        num_train_epochs=epochs,
-        per_device_train_batch_size=batch_size,
-        report_to="wandb",
-    )
 
     dpo_trainer = DPOTrainer(
         model,
@@ -43,6 +36,8 @@ def train(model, ref_model, dataset, tokenizer, beta, lr, batch_size, epochs):
         train_dataset=dataset,
         tokenizer=tokenizer,
         args=training_args,
+        max_length=1024,
+        max_prompt_length=512
     )
 
     dpo_trainer.train()
@@ -76,7 +71,17 @@ def main():
     dataset = load_dataset(args.dataset_name, split="train")
     dataset = dataset.map(preprocess_data)
 
-    train(model, ref_model, dataset, tokenizer, args.beta, args.lr, args.batch_size, args.epochs)
+    training_args = TrainingArguments(
+        learning_rate=args.lr,
+        num_train_epochs=args.epochs,
+        per_device_train_batch_size=args.batch_size,
+        report_to="wandb",
+        output_dir='./results',
+        logging_steps=10,
+        remove_unused_columns=False,
+    )
+
+    train(model, ref_model, dataset, tokenizer, args.beta, training_args)
 
     model.save_pretrained("model-HF-DPO.pt")
 
